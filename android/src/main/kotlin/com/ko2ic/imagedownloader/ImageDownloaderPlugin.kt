@@ -240,18 +240,18 @@ class ImageDownloaderPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
         if (inPublicDir) {
             val contentResolver = context.contentResolver
             return contentResolver.query(
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
                 null,
-                "${MediaStore.Images.Media._ID}=?",
+                "${MediaStore.MediaColumns._ID}=?",
                 arrayOf(imageId),
                 null
             ).use {
                 checkNotNull(it) { "$imageId is an imageId that does not exist." }
                 it.moveToFirst()
-                val path = it.getString(it.getColumnIndex(MediaStore.Images.Media.DATA))
-                val name = it.getString(it.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME))
-                val size = it.getInt(it.getColumnIndex(MediaStore.Images.Media.SIZE))
-                val mimeType = it.getString(it.getColumnIndex(MediaStore.Images.Media.MIME_TYPE))
+                val path = it.getString(it.getColumnIndex(MediaStore.MediaColumns.DATA))
+                val name = it.getString(it.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME))
+                val size = it.getInt(it.getColumnIndex(MediaStore.MediaColumns.SIZE))
+                val mimeType = it.getString(it.getColumnIndex(MediaStore.MediaColumns.MIME_TYPE))
                 FileData(path = path, name = name, byteSize = size, mimeType = mimeType)
             }
         } else {
@@ -259,7 +259,7 @@ class ImageDownloaderPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
             return db.query(
                 TABLE_NAME,
                 COLUMNS,
-                "${MediaStore.Images.Media._ID}=?",
+                "${MediaStore.MediaColumns._ID}=?",
                 arrayOf(imageId),
                 null,
                 null,
@@ -268,11 +268,11 @@ class ImageDownloaderPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
             )
                 .use {
                     it.moveToFirst()
-                    val path = it.getString(it.getColumnIndex(MediaStore.Images.Media.DATA))
-                    val name = it.getString(it.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME))
-                    val size = it.getInt(it.getColumnIndex(MediaStore.Images.Media.SIZE))
+                    val path = it.getString(it.getColumnIndex(MediaStore.MediaColumns.DATA))
+                    val name = it.getString(it.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME))
+                    val size = it.getInt(it.getColumnIndex(MediaStore.MediaColumns.SIZE))
                     val mimeType =
-                        it.getString(it.getColumnIndex(MediaStore.Images.Media.MIME_TYPE))
+                        it.getString(it.getColumnIndex(MediaStore.MediaColumns.MIME_TYPE))
                     FileData(path = path, name = name, byteSize = size, mimeType = mimeType)
                 }
         }
@@ -410,28 +410,33 @@ class ImageDownloaderPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
             val path = file.absolutePath
             val name = file.name
             val size = file.length()
+            var content_uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
 
             val contentValues = ContentValues()
-            contentValues.put(MediaStore.Images.Media.MIME_TYPE, mimeType)
-            contentValues.put(MediaStore.Images.Media.DATA, path)
-            contentValues.put(MediaStore.Images.ImageColumns.DISPLAY_NAME, name)
-            contentValues.put(MediaStore.Images.ImageColumns.SIZE, size)
+            contentValues.put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+            contentValues.put(MediaStore.MediaColumns.RELATIVE_PATH, path)
+            contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+            contentValues.put(MediaStore.MediaColumns.SIZE, size)
+            if (mimeType!!.startsWith("video")) {
+                content_uri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+                contentValues.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_MOVIES)
+            }
             if (inPublicDir) {
 
-                context.contentResolver.insert(
-                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                val uri = context.contentResolver.insert(
+                    content_uri,
                     contentValues
                 )
                 return context.contentResolver.query(
-                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                    arrayOf(MediaStore.Images.Media._ID, MediaStore.Images.Media.DATA),
-                    "${MediaStore.Images.Media.DATA}=?",
+                    content_uri,
+                    arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DATA),
+                    "${MediaStore.MediaColumns.DATA}=?",
                     arrayOf(file.absolutePath),
                     null
                 ).use {
                     checkNotNull(it) { "${file.absolutePath} is not found." }
                     it.moveToFirst()
-                    it.getString(it.getColumnIndex(MediaStore.Images.Media._ID))
+                    it.getString(it.getColumnIndex(MediaStore.MediaColumns._ID))
                 }
             } else {
                 val db = TemporaryDatabase(context)
@@ -461,21 +466,21 @@ class ImageDownloaderPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
 
             val COLUMNS =
                 arrayOf(
-                    MediaStore.Images.Media._ID,
-                    MediaStore.Images.Media.MIME_TYPE,
-                    MediaStore.Images.Media.DATA,
-                    MediaStore.Images.ImageColumns.DISPLAY_NAME,
-                    MediaStore.Images.ImageColumns.SIZE
+                    MediaStore.MediaColumns._ID,
+                    MediaStore.MediaColumns.MIME_TYPE,
+                    MediaStore.MediaColumns.DATA,
+                    MediaStore.MediaColumns.DISPLAY_NAME,
+                    MediaStore.MediaColumns.SIZE
                 )
 
             private const val DATABASE_VERSION = 1
             const val TABLE_NAME = "image_downloader_temporary"
             private const val DICTIONARY_TABLE_CREATE = "CREATE TABLE " + TABLE_NAME + " (" +
-                    MediaStore.Images.Media._ID + " TEXT, " +
-                    MediaStore.Images.Media.MIME_TYPE + " TEXT, " +
-                    MediaStore.Images.Media.DATA + " TEXT, " +
-                    MediaStore.Images.ImageColumns.DISPLAY_NAME + " TEXT, " +
-                    MediaStore.Images.ImageColumns.SIZE + " INTEGER" +
+                    MediaStore.MediaColumns._ID + " TEXT, " +
+                    MediaStore.MediaColumns.MIME_TYPE + " TEXT, " +
+                    MediaStore.MediaColumns.DATA + " TEXT, " +
+                    MediaStore.MediaColumns.DISPLAY_NAME + " TEXT, " +
+                    MediaStore.MediaColumns.SIZE + " INTEGER" +
                     ");"
         }
 
