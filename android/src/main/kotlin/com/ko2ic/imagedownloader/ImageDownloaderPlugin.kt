@@ -332,6 +332,8 @@ class ImageDownloaderPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
                 when (it) {
                     is Downloader.DownloadStatus.Failed -> Log.d(LOGGER_TAG, it.reason)
                     is Downloader.DownloadStatus.Paused -> Log.d(LOGGER_TAG, it.reason)
+                    is Downloader.DownloadStatus.Successful -> {}
+                    is Downloader.DownloadStatus.Pending -> {}
                     is Downloader.DownloadStatus.Running -> {
                         Log.d(LOGGER_TAG, it.progress.toString())
                         val args = HashMap<String, Any>()
