@@ -113,7 +113,9 @@ class _MyAppState extends State<MyApp> {
                     //_downloadImage("https://raw.githubusercontent.com/wiki/ko2ic/image_downloader/images/sample.mp4");
                     //_downloadImage("https://raw.githubusercontent.com/wiki/ko2ic/image_downloader/images/sample.m4v");
                     _downloadImage(
-                        "https://raw.githubusercontent.com/wiki/ko2ic/image_downloader/images/sample.mov");
+                      "https://raw.githubusercontent.com/wiki/ko2ic/image_downloader/images/sample.mov",
+                      outputMimeType: "video",
+                    );
                   },
                   child: Text("movie"),
                 ),
@@ -197,9 +199,10 @@ class _MyAppState extends State<MyApp> {
       String? imageId;
 
       if (whenError) {
-        imageId = await ImageDownloader.downloadImage(url,
-                outputMimeType: outputMimeType)
-            .catchError((error) {
+        imageId = await ImageDownloader.downloadImage(
+          url,
+          outputMimeType: outputMimeType,
+        ).catchError((error) {
           if (error is PlatformException) {
             String? path = "";
             if (error.code == "404") {
@@ -237,10 +240,11 @@ class _MyAppState extends State<MyApp> {
       if (imageId == null) {
         return;
       }
-      fileName = await ImageDownloader.findName(imageId);
-      path = await ImageDownloader.findPath(imageId);
-      size = await ImageDownloader.findByteSize(imageId);
-      mimeType = await ImageDownloader.findMimeType(imageId);
+      final isVideo = outputMimeType?.startsWith("video") ?? false;
+      fileName = await ImageDownloader.findName(imageId, isVideo: isVideo);
+      path = await ImageDownloader.findPath(imageId, isVideo: isVideo);
+      size = await ImageDownloader.findByteSize(imageId, isVideo: isVideo);
+      mimeType = await ImageDownloader.findMimeType(imageId, isVideo: isVideo);
     } on PlatformException catch (error) {
       setState(() {
         _message = error.message ?? '';
