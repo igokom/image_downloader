@@ -23,6 +23,7 @@
 **/doc/api/
 .dart_tool/
 .flutter-plugins
+.flutter-plugins-dependencies
 .packages
 .pub-cache/
 .pub/
@@ -51,7 +52,6 @@ build/
 **/ios/**/Icon?
 **/ios/**/Pods/
 **/ios/**/.symlinks/
-**/ios/**/profile
 **/ios/**/xcuserdata
 **/ios/.generated/
 **/ios/Flutter/App.framework

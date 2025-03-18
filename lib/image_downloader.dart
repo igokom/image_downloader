@@ -43,7 +43,7 @@ class ImageDownloader {
   static void callback({required Function(String?, int) onProgressUpdate}) {
     _channel.setMethodCallHandler((MethodCall call) {
       if (call.method == 'onProgressUpdate') {
-        final id = call.arguments['image_id'] as String?;
+        final id = call.arguments['id'] as String?;
         final progress = call.arguments['progress'] as int;
         onProgressUpdate(id, progress);
       }
@@ -61,23 +61,35 @@ class ImageDownloader {
   }
 
   /// Acquire the saved image name.
-  static Future<String?> findName(String imageId) async {
-    return _channel.invokeMethod<String>('findName', {'imageId': imageId});
+  static Future<String?> findName(String id, {bool? isVideo}) async {
+    return _channel.invokeMethod<String>('findName', {
+      'id': id,
+      'isVideo': isVideo,
+    });
   }
 
   /// Acquire the saved image path.
-  static Future<String?> findPath(String imageId) async {
-    return _channel.invokeMethod<String>('findPath', {'imageId': imageId});
+  static Future<String?> findPath(String id, {bool? isVideo}) async {
+    return _channel.invokeMethod<String>('findPath', {
+      'id': id,
+      'isVideo': isVideo,
+    });
   }
 
   /// Acquire the saved image byte size.
-  static Future<int?> findByteSize(String imageId) async {
-    return _channel.invokeMethod<int>('findByteSize', {'imageId': imageId});
+  static Future<int?> findByteSize(String id, {bool? isVideo}) async {
+    return _channel.invokeMethod<int>('findByteSize', {
+      'id': id,
+      'isVideo': isVideo,
+    });
   }
 
   /// Acquire the saved image mimeType.
-  static Future<String?> findMimeType(String imageId) async {
-    return _channel.invokeMethod<String>('findMimeType', {'imageId': imageId});
+  static Future<String?> findMimeType(String id, {bool? isVideo}) async {
+    return _channel.invokeMethod<String>('findMimeType', {
+      'id': id,
+      'isVideo': isVideo,
+    });
   }
 }
 

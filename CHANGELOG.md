@@ -1,3 +1,6 @@
+## 0.33.0
+* Support android api > 29 
+
 ## 0.31.0
 * Enable to work with V2
 
