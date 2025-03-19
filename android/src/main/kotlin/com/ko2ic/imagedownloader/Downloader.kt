@@ -45,14 +45,15 @@ class Downloader(private val context: Context, private val request: Request) {
             context.registerReceiver(receiver, IntentFilter(ACTION_DOWNLOAD_COMPLETE))
         }
         downloadId = manager.enqueue(request)
-        downloadId?.let { nullableDownloadId ->
+        downloadId?.let { notNullDownloadId ->
             Thread {
                 var downloading = true
 
                 while (downloading) {
 
                     val q = Query()
-                    q.setFilterById(nullableDownloadId)
+
+                    q.setFilterById(notNullDownloadId)
 
                     val cursor = manager.query(q)
                     cursor.moveToFirst()
@@ -84,7 +85,7 @@ class Downloader(private val context: Context, private val request: Request) {
 
                     onNext(
                         DownloadStatus.Running(
-                            createRequestResult(nullableDownloadId, cursor),
+                            createRequestResult(notNullDownloadId, cursor),
                             progress.toInt()
                         )
                     )

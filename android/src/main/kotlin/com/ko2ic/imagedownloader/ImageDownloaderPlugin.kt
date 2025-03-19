@@ -5,8 +5,7 @@ import android.app.DownloadManager
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
-import android.database.sqlite.SQLiteDatabase
-import android.database.sqlite.SQLiteOpenHelper
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Environment
 import android.os.Handler
@@ -16,8 +15,8 @@ import android.util.Log
 import android.webkit.MimeTypeMap
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
-import com.ko2ic.imagedownloader.ImageDownloaderPlugin.TemporaryDatabase.Companion.COLUMNS
-import com.ko2ic.imagedownloader.ImageDownloaderPlugin.TemporaryDatabase.Companion.TABLE_NAME
+import com.ko2ic.imagedownloader.TemporaryDatabase.Companion.COLUMNS
+import com.ko2ic.imagedownloader.TemporaryDatabase.Companion.TABLE_NAME
 import io.flutter.BuildConfig
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
@@ -195,7 +194,7 @@ class ImageDownloaderPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
 
         val manager = applicationContext?.packageManager
         if (manager != null) {
-            if (manager.queryIntentActivities(intent, 0).isEmpty()) {
+            if (manager.queryIntentActivities(intent, PackageManager.MATCH_ALL).isEmpty()) {
                 result.error("preview_error", "This file is not supported for previewing", null)
             } else {
                 applicationContext?.startActivity(intent)
@@ -271,7 +270,7 @@ class ImageDownloaderPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
         }
     }
 
-    class CallbackImpl(
+    private class CallbackImpl(
         private val call: MethodCall,
         private val result: MethodChannel.Result,
         private val channel: MethodChannel,
@@ -288,7 +287,7 @@ class ImageDownloaderPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
             val headers: Map<String, String>? = call.argument<Map<String, String>>("headers")
 
             val outputMimeType = call.argument<String>("mimeType")
-            val inPublicDir = call.argument<Boolean>("inPublicDir") ?: true
+            val inPublicDir = call.argument<Boolean>("inPublicDir") != false
             val directoryType = call.argument<String>("directory") ?: "DIRECTORY_DOWNLOADS"
             val subDirectory = call.argument<String>("subDirectory")
             val tempSubDirectory = subDirectory ?: SimpleDateFormat(
@@ -296,13 +295,12 @@ class ImageDownloaderPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
                 Locale.getDefault()
             ).format(Date())
 
-            val directory = convertToDirectory(directoryType)
-
-            val uri = url.toUri()
-            val request = DownloadManager.Request(uri)
+            val downloadUri = url.toUri()
+            val request = DownloadManager.Request(downloadUri)
 
             //request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            request.allowScanningByMediaScanner()
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) request.allowScanningByMediaScanner()
+
 
             if (headers != null) {
                 for ((key, value) in headers) {
@@ -310,6 +308,7 @@ class ImageDownloaderPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
                 }
             }
 
+            val directory = convertToDirectory(directoryType)
             if (inPublicDir) {
                 request.setDestinationInExternalPublicDir(directory, tempSubDirectory)
             } else {
@@ -360,16 +359,23 @@ class ImageDownloaderPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
                         null
                     )
                 } else {
-                    val stream = BufferedInputStream(FileInputStream(file))
-                    val mimeType = outputMimeType
-                        ?: URLConnection.guessContentTypeFromStream(stream)
-
+                    var mimeType: String? = null
+                    if (outputMimeType == null) {
+                        try {
+                            val stream = BufferedInputStream(FileInputStream(file))
+                            mimeType = URLConnection.guessContentTypeFromStream(stream)
+                        } catch (e: Throwable) {
+                            Log.e(LOGGER_TAG, "${e.printStackTrace()}")
+                        }
+                    } else {
+                        mimeType = outputMimeType
+                    }
                     val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType)
 
                     val fileName = when {
                         subDirectory != null -> subDirectory
                         extension != null -> "$tempSubDirectory.$extension"
-                        else -> uri.lastPathSegment?.split("/")?.last() ?: "file"
+                        else -> downloadUri.lastPathSegment?.split("/")?.last() ?: "file"
                     }
 
                     val newFile = if (inPublicDir) {
@@ -478,39 +484,4 @@ class ImageDownloaderPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
         val byteSize: Int,
         val mimeType: String
     )
-
-    class TemporaryDatabase(context: Context) :
-        SQLiteOpenHelper(context, TABLE_NAME, null, DATABASE_VERSION) {
-
-
-        companion object {
-
-            val COLUMNS =
-                arrayOf(
-                    MediaStore.MediaColumns._ID,
-                    MediaStore.MediaColumns.MIME_TYPE,
-                    MediaStore.MediaColumns.DATA,
-                    MediaStore.MediaColumns.DISPLAY_NAME,
-                    MediaStore.MediaColumns.RELATIVE_PATH,
-                    MediaStore.MediaColumns.SIZE
-                )
-            private const val DATABASE_VERSION = 1
-            const val TABLE_NAME = "image_downloader_temporary"
-            private const val DICTIONARY_TABLE_CREATE = "CREATE TABLE " + TABLE_NAME + " (" +
-                    MediaStore.MediaColumns._ID + " TEXT, " +
-                    MediaStore.MediaColumns.MIME_TYPE + " TEXT, " +
-                    MediaStore.MediaColumns.DATA + " TEXT, " +
-                    MediaStore.MediaColumns.DISPLAY_NAME + " TEXT, " +
-                    MediaStore.MediaColumns.RELATIVE_PATH + " TEXT, " +
-                    MediaStore.MediaColumns.SIZE + " INTEGER" +
-                    ");"
-        }
-
-        override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
-        }
-
-        override fun onCreate(db: SQLiteDatabase) {
-            db.execSQL(DICTIONARY_TABLE_CREATE)
-        }
-    }
 }
